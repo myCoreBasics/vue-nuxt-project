@@ -9,9 +9,9 @@ export default defineEventHandler(async (event) => {
     '/api/auth/register',
     '/api/auth/logout',
     '/api/auth/google',
-    '/api/auth/google/callback',
+    '/api/auth/callback/google',
     '/api/auth/naver',
-    '/api/auth/naver/callback'
+    '/api/auth/callback/naver'
   ];
   
   // public 경로면 인증 체크 안 함
