@@ -1,5 +1,3 @@
-import { sendRedirect } from 'h3'
-
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
@@ -12,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
     client_id: config.googleClientId,
-    redirect_uri: `${getRequestURL(event).origin}/api/auth/google/callback`,
+    redirect_uri: `${getRequestURL(event).origin}/api/auth/callback/google`,
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline'

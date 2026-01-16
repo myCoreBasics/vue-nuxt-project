@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
         client_id: config.naverClientId,
         client_secret: config.naverClientSecret,
         code,
-        redirect_uri: `${getRequestURL(event).origin}/api/auth/naver/callback`,
+        redirect_uri: `${getRequestURL(event).origin}/api/auth/callback/naver`,
         state: state || ''
       }).toString()
     })

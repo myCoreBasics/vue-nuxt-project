@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const authUrl = `https://nid.naver.com/oauth2.0/authorize?` + new URLSearchParams({
     client_id: config.naverClientId,
-    redirect_uri: `${getRequestURL(event).origin}/api/auth/naver/callback`,
+    redirect_uri: `${getRequestURL(event).origin}/api/auth/callback/naver`,
     response_type: 'code',
     state: Math.random().toString(36).substring(7)
   })

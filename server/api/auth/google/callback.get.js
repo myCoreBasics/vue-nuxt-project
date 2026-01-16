@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
         client_id: config.googleClientId,
         client_secret: config.googleClientSecret,
         code,
-        redirect_uri: `${getRequestURL(event).origin}/api/auth/google/callback`,
+        redirect_uri: `${getRequestURL(event).origin}/api/auth/callback/google`,
         grant_type: 'authorization_code'
       }
     })
