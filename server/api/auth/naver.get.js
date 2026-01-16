@@ -14,6 +14,7 @@ export default defineEventHandler(async (event) => {
     client_id: config.naverClientId,
     redirect_uri: `${getRequestURL(event).origin}/api/auth/callback/naver`,
     response_type: 'code',
+    scope: 'email profile name nickname',
     state: Math.random().toString(36).substring(7)
   })
 

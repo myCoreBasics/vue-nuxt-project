@@ -12,10 +12,6 @@
 
     <!-- 로그인 했을 때만 메인 화면 -->
     <div v-else>
-      <div class="user-info">
-        <span>{{ userName }}님 환영합니다</span>
-      </div>
-
       <div class="hero">
         <h1>🎉 최신 제품을 만나보세요</h1>
         <p>다양한 카테고리의 제품을 둘러보세요</p>
@@ -103,6 +99,10 @@
 
 <script setup>
 import { useCart } from '../composables/useCart'
+const user = useCookie('user_name'); // 로그인 여부 체크
+const userName = computed(() => user.value)
+const route = useRoute();
+const router = useRouter();
 
 const { addToCart } = useCart()
 

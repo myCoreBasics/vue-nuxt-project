@@ -1,4 +1,3 @@
-<!-- app.vue -->
 <template>
   <div>
     <nav class="navbar">
@@ -11,13 +10,21 @@
         <div v-if="!user" class="nav-links">
           <NuxtLink to="/login" class="nav-link">로그인</NuxtLink>
         </div>
-        
+
         <!-- 로그인 했을 때 -->
         <div v-else class="nav-links">
           <NuxtLink to="/">홈</NuxtLink>
-          <button @click="handleLogout" class="logout-btn">
-            로그아웃
-          </button>
+
+          <!-- 프로필 드롭다운 -->
+          <div class="dropdown profile-dropdown">
+            <span class="dropdown-title">{{ userName }}님</span>
+            <div class="dropdown-menu">
+              <NuxtLink to="/profile">회원정보 수정</NuxtLink>
+              <button @click="handleLogout" class="logout-btn">
+                로그아웃
+              </button>
+            </div>
+          </div>
 
           <!-- Board 드롭다운 -->
           <div class="dropdown">
@@ -56,28 +63,29 @@
 
 <script setup>
 import { useCart } from './composables/useCart'
+
 const router = useRouter()
 
 const user = useCookie('user_name')
-const authToken = useCookie('auth_token')
+const userName = useCookie('user_name')
 
 const handleLogout = async () => {
-  await $fetch('/api/auth/logout', { method: 'POST' });
-  const authToken = useCookie('auth_token');
-  const userIdCookie = useCookie('user_id');
-  const userNameCookie = useCookie('user_name');
-  authToken.value = null;
-  userIdCookie.value = null;
-  userNameCookie.value = null;
-  router.push('/');
-};
+  await $fetch('/api/auth/logout', { method: 'POST' })
+
+  useCookie('auth_token').value = null
+  useCookie('user_id').value = null
+  useCookie('user_name').value = null
+
+  router.push('/')
+}
 
 const { cartCount } = useCart()
-// 로그인 사용자 이름 (쿠키)
-const userName = useCookie('user_name')
 </script>
 
 <style>
+/* =======================
+   Reset & Base
+======================= */
 * {
   margin: 0;
   padding: 0;
@@ -89,6 +97,9 @@ body {
   background: #f5f5f5;
 }
 
+/* =======================
+   Navbar
+======================= */
 .navbar {
   background: white;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -122,7 +133,6 @@ body {
 .nav-links a {
   color: #2c3e50;
   text-decoration: none;
-  transition: color 0.3s;
   font-weight: 500;
 }
 
@@ -130,30 +140,9 @@ body {
   color: #3498db;
 }
 
-.nav-links a.router-link-active {
-  color: #3498db;
-  border-bottom: 2px solid #3498db;
-}
-
-.logout-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-
-  font: inherit;
-  color: #2c3e50;
-  font-weight: 500;
-
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.logout-btn:hover {
-  color: #3498db;
-}
-
-
+/* =======================
+   Cart
+======================= */
 .cart-link {
   position: relative;
   padding: 8px 16px;
@@ -164,7 +153,6 @@ body {
 
 .cart-link:hover {
   background: #2980b9;
-  color: white !important;
 }
 
 .cart-count {
@@ -179,6 +167,70 @@ body {
   font-weight: bold;
 }
 
+/* =======================
+   Dropdown
+======================= */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-title {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 8px 12px;
+  color: #2c3e50;
+}
+
+.dropdown-title:hover {
+  color: #3498db;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 6px;
+  display: none;
+  flex-direction: column;
+  margin-top: 4px;
+  z-index: 200;
+}
+
+.dropdown-menu a,
+.dropdown-menu .logout-btn {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  background: none;
+  border: none;
+  text-decoration: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu .logout-btn:hover {
+  background: #f0f4ff;
+  color: #3498db;
+}
+
+/* hover 시 표시 */
+.dropdown:hover .dropdown-menu {
+  display: flex;
+}
+
+/* =======================
+   Layout
+======================= */
 .main-content {
   min-height: calc(100vh - 140px);
   max-width: 1200px;
@@ -193,83 +245,4 @@ body {
   padding: 20px;
   margin-top: 40px;
 }
-
-.user-info {
-  color: #666;
-  font-size: 14px;
-}
-
-/* 드롭다운 공통 */
-.dropdown {
-  position: relative;
-}
-
-.dropdown-title {
-  cursor: pointer;
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.dropdown-title:hover {
-  color: #3498db;
-}
-
-/* 드롭다운 전체 wrapper */
-.dropdown {
-  position: relative;
-  cursor: pointer;
-}
-
-/* 드롭다운 타이틀 */
-.dropdown-title {
-  font-weight: 500;
-  display: inline-block;
-  padding: 8px 12px;
-}
-
-/* 드롭다운 메뉴 */
-.dropdown-menu {
-  position: absolute;
-  top: 100%; /* 타이틀 바로 아래 */
-  left: 0;
-  background: white;
-  min-width: 160px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-radius: 6px;
-  display: none;
-  flex-direction: column;
-  z-index: 200;
-  margin-top: 4px; /* 약간 간격 */
-}
-
-/* 링크 스타일 */
-.dropdown-menu a {
-  padding: 10px 14px;
-  text-decoration: none;
-  color: #2c3e50;
-  white-space: nowrap;
-}
-
-/* 링크 hover */
-.dropdown-menu a:hover {
-  background: #f0f4ff;
-  color: #3498db;
-}
-
-/* hover 시 메뉴 표시 */
-.dropdown:hover .dropdown-menu {
-  display: flex;
-}
-
-/* 메뉴 영역까지 hover 유지 */
-.dropdown::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  height: 10px; /* 메뉴와 타이틀 사이 마우스 끊김 방지 */
-}
-
-
 </style>

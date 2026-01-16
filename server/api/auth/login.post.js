@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     
     // 사용자 조회
     const [users] = await pool.query(
-      'SELECT userid, name, password FROM laon_tbl_user WHERE userid = ?',
+      'SELECT userid, name, email, password FROM laon_tbl_user WHERE userid = ?',
       [body.userid]
     );
     
@@ -30,6 +30,8 @@ export default defineEventHandler(async (event) => {
     
     const user = users[0];
     
+    console.log('Login - Raw user from DB:', JSON.stringify(user, null, 2)); // 전체 사용자 정보 확인
+    
     // 비밀번호 확인
     const isValid = await bcrypt.compare(body.password, user.password);
     
@@ -40,10 +42,14 @@ export default defineEventHandler(async (event) => {
       };
     }
     
+    console.log('Login - User email from DB:', user.email); // 이메일 specifically 확인
+    console.log('Login - User name from DB:', user.name); // 이름 확인
+    
     // JWT 토큰 생성
     const token = generateToken({
       userid: user.userid,
-      name: user.name
+      name: user.name,
+      email: user.email
     });
     
     // 쿠키에 토큰 저장
@@ -54,6 +60,8 @@ export default defineEventHandler(async (event) => {
       path: '/'
     });
     
+    console.log('Login - User from DB:', user); // 디버깅용
+    
     // Session에 사용자 정보 저장 (Nuxt3 방식)
     await useSession(event, {
       password: useRuntimeConfig().sessionSecret
@@ -61,8 +69,11 @@ export default defineEventHandler(async (event) => {
       session.data.user = {
         userid: user.userid,
         name: user.name,
+        email: user.email,
+        provider: 'local',
         loginTime: new Date()
       };
+      console.log('Login - Session saved:', session.data.user); // 디버깅용
     });
     
     // 사용자 정보 쿠키 저장

@@ -1,4 +1,5 @@
 import { generateToken } from '../../../utils/jwt'
+import { getDbPool } from '../../../utils/db'
 
 export default defineEventHandler(async (event) => {
   const { code } = getQuery(event)
@@ -37,6 +38,35 @@ export default defineEventHandler(async (event) => {
       name: userInfo.name || userInfo.email?.split('@')[0] || 'Google User',
       email: userInfo.email,
       provider: 'google'
+    }
+
+    // DB에 사용자 정보 저장 또는 업데이트
+    const pool = getDbPool()
+    try {
+      // 기존 사용자 확인
+      const [existingUsers] = await pool.query(
+        'SELECT userid FROM laon_tbl_user WHERE userid = ?',
+        [user.userid]
+      )
+      
+      if (existingUsers.length === 0) {
+        // 신규 사용자 저장
+        await pool.query(
+          'INSERT INTO laon_tbl_user (userid, name, email, provider, created_at) VALUES (?, ?, ?, ?, NOW())',
+          [user.userid, user.name, user.email, user.provider]
+        )
+        console.log('Google 신규 사용자 저장:', user.userid)
+      } else {
+        // 기존 사용자 정보 업데이트
+        await pool.query(
+          'UPDATE laon_tbl_user SET name = ?, email = ?, updated_at = NOW() WHERE userid = ?',
+          [user.name, user.email, user.userid]
+        )
+        console.log('Google 사용자 정보 업데이트:', user.userid)
+      }
+    } catch (dbError) {
+      console.error('DB 저장 실패:', dbError)
+      // DB 실패해도 세션은 계속 진행
     }
 
     // JWT 토큰 생성

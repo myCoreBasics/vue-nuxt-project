@@ -108,7 +108,7 @@ const handleLogin = async () => {
     });
     
     if (response.success) {
-      router.push('/board/list');
+      router.push('/');
     } else {
       errorMessage.value = response.error;
     }

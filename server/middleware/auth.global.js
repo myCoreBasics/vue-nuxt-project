@@ -49,13 +49,16 @@ export default defineEventHandler(async (event) => {
       const decoded = verifyToken(token);
       if (decoded) {
         user = decoded;
+        console.log(`[${url}] : JWT 확인 - ${user.userid}`);
+        console.log(`[${url}] : JWT user info:`, JSON.stringify(user, null, 2));
+        
         // JWT로 인증된 경우 Session에도 저장
         try {
           const session = await useSession(event, {
             password: useRuntimeConfig().sessionSecret
           });
           session.data.user = user;
-          console.log(`[${url}] : JWT 확인 - ${user.userid}`);
+          console.log(`[${url}] : JWT로 세션 저장 - ${user.userid}`);
         } catch (error) {
           console.log('Session save error:', error.message);
         }

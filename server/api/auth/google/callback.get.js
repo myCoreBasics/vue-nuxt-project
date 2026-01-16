@@ -71,7 +71,7 @@ export default defineEventHandler(async (event) => {
       path: '/'
     })
 
-    return sendRedirect(event, '/board/list')
+    return sendRedirect(event, '/')
 
   } catch (error) {
     console.error('Google OAuth error:', error)
