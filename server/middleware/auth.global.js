@@ -7,7 +7,11 @@ export default defineEventHandler(async (event) => {
   const publicPaths = [
     '/api/auth/login',
     '/api/auth/register',
-    '/api/auth/logout'
+    '/api/auth/logout',
+    '/api/auth/google',
+    '/api/auth/google/callback',
+    '/api/auth/naver',
+    '/api/auth/naver/callback'
   ];
   
   // public 경로면 인증 체크 안 함
