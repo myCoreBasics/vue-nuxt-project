@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h1>게시물 작성</h1>
+    <h1>공지사항 글쓰기</h1>
     
     <form @submit.prevent="submitForm" class="write-form">
       <div class="form-group">
@@ -53,7 +53,6 @@
 </template>
 
 <script setup>
-
 const router = useRouter();
 const userName = useCookie('user_name');
 const writerName = ref(userName.value || '');
@@ -75,12 +74,15 @@ const submitForm = async () => {
   try {
     const response = await $fetch('/api/board/create', {
       method: 'POST',
-      body: formData.value
+      body: {
+        ...formData.value,
+        category: '공지사항'
+      }
     });
     
     if (response.success) {
       alert('게시물이 등록되었습니다.');
-      router.push('/board/list');
+      router.push('/board/notice/notice');
     } else {
       errorMessage.value = response.error || '게시물 등록에 실패했습니다.';
     }
@@ -93,7 +95,7 @@ const submitForm = async () => {
 };
 
 const goToList = () => {
-  router.push('/board/list');
+  router.push('/board/notice/notice');
 };
 </script>
 

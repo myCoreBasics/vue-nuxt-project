@@ -12,7 +12,7 @@
     <!-- 로그인 했으면 게시판 내용 -->
     <div v-else>
       <div class="header">
-        <h1>게시판</h1>
+        <h1>자유게시판</h1>
       </div>
       
       <div v-if="pending" class="loading">
@@ -125,13 +125,13 @@ const router = useRouter();
 const currentPage = computed(() => parseInt(route.query.page) || 1);
 
 const { data, pending, error } = await useFetch('/api/boards', {
-  query: { page: currentPage, limit: 10 },
+  query: { page: currentPage, limit: 10, category: '자유게시판' },
   watch: [currentPage]
 });
 
-const goToPage = (page) => router.push({ path: '/board/list', query: { page } });
-const goToWrite = () => router.push('/board/write');
-const goToView = (bno) => router.push(`/board/${bno}`);
+const goToPage = (page) => router.push({ path: '/board/free', query: { page } });
+const goToWrite = () => router.push('/board/free/write');
+const goToView = (bno) => router.push(`/board/free/${bno}`);
 const handleLogout = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' });
   const authToken = useCookie('auth_token');

@@ -30,7 +30,8 @@
           <div class="dropdown">
             <span class="dropdown-title">Board</span>
             <div class="dropdown-menu">
-              <NuxtLink to="/board/list">게시판</NuxtLink>
+              <NuxtLink to="/board/notice/notice">공지사항</NuxtLink>
+              <NuxtLink to="/board/free/free">자유게시판</NuxtLink>
             </div>
           </div>
 

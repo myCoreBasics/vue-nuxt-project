@@ -8,7 +8,7 @@
       오류가 발생했습니다: {{ error.message }}
     </div>
     
-    <div v-else-if="!isEditMode && data && data.success">
+    <div v-else-if="data && data.success">
       <div class="view-container">
         <h1>{{ data.data.title }}</h1>
         
@@ -18,106 +18,44 @@
             <span>{{ data.data.writer }}</span>
           </div>
           <div class="info-item">
-            <span class="label">작성일:</span>
-            <span>{{ formatDate(data.data.regDate) }}</span>
-          </div>
-          <div class="info-item">
             <span class="label">조회수:</span>
             <span>{{ data.data.hitno }}</span>
           </div>
+          <div class="info-item">
+            <span class="label">등록일:</span>
+            <span>{{ formatDate(data.data.regDate) }}</span>
+          </div>
         </div>
         
-        <div class="content-box">
-          <div class="content" v-html="formatContent(data.data.content)"></div>
+        <div class="post-content">
+          <div v-html="formatContent(data.data.content)"></div>
         </div>
         
-        <div class="button-group">
-          <button 
-            v-if="data.prev" 
-            @click="goToPost(data.prev.bno)" 
-            class="nav-btn"
-          >
-            ← 이전 게시물
+        <div class="navigation-buttons">
+          <button v-if="data.prevPost" @click="goToPost(data.prevPost.bno)" class="nav-btn prev-btn">
+            이전 글: {{ data.prevPost.title }}
           </button>
-          <button v-else class="nav-btn" disabled>← 이전 게시물</button>
-          
-          <button @click="goToList" class="list-btn">
-            목록
+          <button v-if="data.nextPost" @click="goToPost(data.nextPost.bno)" class="nav-btn next-btn">
+            다음 글: {{ data.nextPost.title }}
           </button>
-          
-          <button 
-            v-if="data.next" 
-            @click="goToPost(data.next.bno)" 
-            class="nav-btn"
-          >
-            다음 게시물 →
-          </button>
-          <button v-else class="nav-btn" disabled>다음 게시물 →</button>
         </div>
         
-        <div class="action-buttons" v-if="isOwner">
-          <button @click="enableEditMode" class="edit-btn">
-            수정
-          </button>
-          <button @click="showDeleteModal = true" class="delete-btn">
-            삭제
-          </button>
+        <div class="action-buttons">
+          <button @click="goToList" class="list-btn">목록</button>
+          <button v-if="isOwner" @click="startEdit" class="edit-btn">수정</button>
+          <button v-if="isOwner" @click="showDeleteModal = true" class="delete-btn">삭제</button>
         </div>
       </div>
     </div>
     
-    <!-- 수정 모드 -->
-    <div v-else-if="isEditMode" class="edit-container">
-      <h1>게시물 수정</h1>
-      
-      <form @submit.prevent="handleUpdate" class="edit-form">
-        <div class="form-group">
-          <label for="title">제목 *</label>
-          <input 
-            type="text" 
-            id="title" 
-            v-model="editData.title"
-            required
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="content">내용 *</label>
-          <textarea 
-            id="content" 
-            v-model="editData.content"
-            rows="15"
-            required
-          ></textarea>
-        </div>
-        
-        <div v-if="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
-        
-        <div class="button-group">
-          <button type="submit" class="submit-btn" :disabled="isSubmitting">
-            {{ isSubmitting ? '수정 중...' : '수정' }}
-          </button>
-          <button type="button" @click="cancelEdit" class="cancel-btn">
-            취소
-          </button>
-        </div>
-      </form>
-    </div>
-    
     <!-- 삭제 확인 모달 -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click="showDeleteModal = false">
-      <div class="modal-content" @click.stop>
-        <h2>게시물 삭제</h2>
+    <div v-if="showDeleteModal" class="modal-overlay">
+      <div class="modal">
+        <h3>게시물 삭제</h3>
         <p>정말로 이 게시물을 삭제하시겠습니까?</p>
         <div class="modal-buttons">
-          <button @click="handleDelete" class="confirm-btn">
-            확인
-          </button>
-          <button @click="showDeleteModal = false" class="cancel-btn">
-            취소
-          </button>
+          <button @click="handleDelete" class="delete-confirm-btn">삭제</button>
+          <button @click="showDeleteModal = false" class="cancel-btn">취소</button>
         </div>
       </div>
     </div>
@@ -154,10 +92,37 @@ const editData = ref({
   content: ''
 });
 
-const enableEditMode = () => {
-  editData.value.title = data.value.data.title;
-  editData.value.content = data.value.data.content;
+// 데이터 로드 시 수정 폼 초기화
+watchEffect(() => {
+  if (data.value?.data) {
+    editData.value = {
+      title: data.value.data.title,
+      content: data.value.data.content
+    };
+  }
+});
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+};
+
+const formatContent = (content) => {
+  return content.replace(/\n/g, '<br>');
+};
+
+const goToPost = (bno) => {
+  router.push(`/board/notice/${bno}`);
+};
+
+const goToList = () => {
+  router.push('/board/notice/notice');
+};
+
+const startEdit = () => {
   isEditMode.value = true;
+  errorMessage.value = '';
 };
 
 const cancelEdit = () => {
@@ -200,42 +165,14 @@ const handleDelete = async () => {
     
     if (response.success) {
       alert('게시물이 삭제되었습니다.');
-      router.push('/');
+      router.push('/board/notice/notice');
     } else {
       alert(response.error || '게시물 삭제에 실패했습니다.');
     }
   } catch (error) {
     console.error('Delete error:', error);
     alert('게시물 삭제 중 오류가 발생했습니다.');
-  } finally {
-    showDeleteModal.value = false;
   }
-};
-
-const goToList = () => {
-  router.push('/board/list');
-};
-
-const goToPost = (bno) => {
-  router.push(`/board/${bno}`);
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
-};
-
-const formatContent = (content) => {
-  if (!content) return '';
-  return content.replace(/\n/g, '<br>');
 };
 </script>
 
@@ -261,7 +198,7 @@ const formatContent = (content) => {
   margin: 20px 0;
 }
 
-.view-container {
+.view-container, .edit-container {
   background-color: white;
   padding: 30px;
   border-radius: 8px;
@@ -271,8 +208,6 @@ const formatContent = (content) => {
 h1 {
   color: #333;
   margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #4CAF50;
 }
 
 .post-info {
@@ -287,7 +222,6 @@ h1 {
 .info-item {
   display: flex;
   gap: 8px;
-  font-size: 14px;
 }
 
 .label {
@@ -295,86 +229,66 @@ h1 {
   color: #666;
 }
 
-.content-box {
-  min-height: 300px;
+.post-content {
+  margin: 20px 0;
   padding: 20px;
-  margin-bottom: 30px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  background-color: #fafafa;
+  min-height: 200px;
+  line-height: 1.6;
 }
 
-.content {
-  line-height: 1.8;
-  color: #333;
-}
-
-.button-group {
+.navigation-buttons {
   display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #ddd;
+  justify-content: space-between;
+  margin: 20px 0;
 }
 
-.nav-btn,
-.list-btn {
+.nav-btn {
   padding: 10px 20px;
   border: 1px solid #ddd;
   background-color: white;
-  color: #333;
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  border-radius: 4px;
+  transition: background-color 0.3s;
 }
 
-.nav-btn:hover:not(:disabled),
-.list-btn:hover {
+.nav-btn:hover {
   background-color: #f5f5f5;
 }
 
-.nav-btn:disabled {
-  background-color: #f5f5f5;
-  color: #ccc;
-  cursor: not-allowed;
+.prev-btn {
+  margin-right: auto;
 }
 
-.list-btn {
-  background-color: #4CAF50;
-  color: white;
-  border-color: #4CAF50;
-}
-
-.list-btn:hover {
-  background-color: #45a049;
+.next-btn {
+  margin-left: auto;
 }
 
 .action-buttons {
   display: flex;
   justify-content: center;
   gap: 10px;
+  margin-top: 20px;
 }
 
-.edit-btn,
-.delete-btn {
+.list-btn, .edit-btn, .delete-btn {
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
-  font-weight: bold;
   cursor: pointer;
+  font-weight: bold;
   transition: background-color 0.3s;
 }
 
-.edit-btn {
+.list-btn {
   background-color: #2196F3;
   color: white;
 }
 
-.edit-btn:hover {
-  background-color: #1976D2;
+.edit-btn {
+  background-color: #FFC107;
+  color: #333;
 }
 
 .delete-btn {
@@ -382,48 +296,44 @@ h1 {
   color: white;
 }
 
+.list-btn:hover {
+  background-color: #1976D2;
+}
+
+.edit-btn:hover {
+  background-color: #FFA000;
+}
+
 .delete-btn:hover {
   background-color: #d32f2f;
 }
 
-/* 수정 모드 스타일 */
-.edit-container {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.edit-form {
+  max-width: 100%;
 }
 
-.edit-form .form-group {
+.form-group {
   margin-bottom: 20px;
 }
 
-.edit-form label {
+.form-group label {
   display: block;
   margin-bottom: 8px;
   color: #333;
   font-weight: bold;
-  font-size: 14px;
 }
 
-.edit-form input,
-.edit-form textarea {
+.form-group input,
+.form-group textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
-  transition: border-color 0.3s;
 }
 
-.edit-form input:focus,
-.edit-form textarea:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
-
-.edit-form textarea {
+.form-group textarea {
   resize: vertical;
   font-family: inherit;
 }
@@ -434,11 +344,15 @@ h1 {
   color: #c62828;
   border-radius: 4px;
   margin-bottom: 20px;
-  font-size: 14px;
 }
 
-.submit-btn,
-.cancel-btn {
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.submit-btn, .cancel-btn {
   padding: 12px 30px;
   border: none;
   border-radius: 4px;
@@ -472,7 +386,6 @@ h1 {
   background-color: #e0e0e0;
 }
 
-/* 모달 스타일 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -486,45 +399,40 @@ h1 {
   z-index: 1000;
 }
 
-.modal-content {
+.modal {
   background-color: white;
   padding: 30px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-  width: 90%;
+  text-align: center;
+  min-width: 300px;
 }
 
-.modal-content h2 {
-  margin-top: 0;
+.modal h3 {
   margin-bottom: 15px;
   color: #333;
 }
 
-.modal-content p {
-  margin-bottom: 25px;
+.modal p {
+  margin-bottom: 20px;
   color: #666;
 }
 
 .modal-buttons {
   display: flex;
-  gap: 10px;
   justify-content: center;
+  gap: 10px;
 }
 
-.confirm-btn {
-  padding: 10px 20px;
+.delete-confirm-btn {
   background-color: #f44336;
   color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: background-color 0.3s;
 }
 
-.confirm-btn:hover {
+.delete-confirm-btn:hover {
   background-color: #d32f2f;
 }
 </style>
