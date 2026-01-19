@@ -52,13 +52,19 @@ export default defineEventHandler(async (event) => {
         console.log(`[${url}] : JWT 확인 - ${user.userid}`);
         console.log(`[${url}] : JWT user info:`, JSON.stringify(user, null, 2));
         
-        // JWT로 인증된 경우 Session에도 저장
+        // JWT로 인증된 경우 Session에도 저장 (세션에 정보가 없을 때만)
         try {
           const session = await useSession(event, {
             password: useRuntimeConfig().sessionSecret
           });
-          session.data.user = user;
-          console.log(`[${url}] : JWT로 세션 저장 - ${user.userid}`);
+          
+          // 세션에 사용자 정보가 없거나 오래된 경우에만 JWT 정보로 저장
+          if (!session.data.user || !session.data.user.email) {
+            session.data.user = user;
+            console.log(`[${url}] : JWT로 세션 저장 - ${user.userid}`);
+          } else {
+            console.log(`[${url}] : 세션에 정보가 있어 JWT 정보 무시 - ${user.userid}`);
+          }
         } catch (error) {
           console.log('Session save error:', error.message);
         }

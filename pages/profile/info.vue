@@ -18,6 +18,44 @@
       <div class="profile-container">
         <div class="profile-wrapper">
           <form @submit.prevent="updateProfile" class="profile-form">
+
+            <div class="form-group">
+              <label for="userId">아이디</label>
+              <input 
+                type="text" 
+                id="userId" 
+                :value="user.userid" 
+                readonly 
+                class="form-control"
+              />
+              <small class="form-text text-muted">
+                아이디는 수정할 수 없습니다.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>가입 유형</label>
+              <div class="provider-info">
+                <span class="provider-badge" :class="user.provider">
+                  {{ getProviderName(user.provider) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="regdate">가입일</label>
+              <input 
+                type="text" 
+                id="regdate" 
+                :value="formatDate(user.regdate)" 
+                readonly 
+                class="form-control"
+              />
+              <small class="form-text text-muted">
+                가입일은 수정할 수 없습니다.
+              </small>
+            </div>
+
             <div class="form-group">
               <label for="name">이름</label>
               <input 
@@ -36,6 +74,8 @@
                 id="email" 
                 v-model="formData.email" 
                 class="form-control"
+                :disabled="user.provider !== 'local'"
+                :readonly="user.provider !== 'local'"
               />
               <small v-if="user.provider !== 'local'" class="form-text text-muted">
                 소셜 로그인 사용자는 이메일을 수정할 수 없습니다.
@@ -43,36 +83,52 @@
             </div>
 
             <div class="form-group">
-              <label>로그인 방식</label>
-              <div class="provider-info">
-                <span class="provider-badge" :class="user.provider">
-                  {{ getProviderName(user.provider) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="userId">아이디</label>
+              <label for="password">비밀번호</label>
               <input 
-                type="text" 
-                id="userId" 
-                :value="user.userid" 
-                readonly 
+                type="password" 
+                id="password" 
+                v-model="formData.password" 
                 class="form-control"
+                placeholder="새 비밀번호를 입력하세요"
               />
               <small class="form-text text-muted">
-                아이디는 수정할 수 없습니다.
+                비밀번호를 변경하려면 새 비밀번호를 입력하세요.
+              </small>
+            </div>
+
+            <div class="form-group" v-if="formData.password">
+              <label for="confirmPassword">비밀번호 확인</label>
+              <input 
+                type="password" 
+                id="confirmPassword" 
+                v-model="formData.confirmPassword" 
+                class="form-control"
+                placeholder="비밀번호를 다시 입력하세요"
+              />
+              <small class="form-text text-muted">
+                비밀번호 변경을 위해 다시 입력하세요.
               </small>
             </div>
 
             <div class="form-group">
-              <label for="loginTime">마지막 로그인</label>
+              <label for="job">직업</label>
               <input 
                 type="text" 
-                id="loginTime" 
-                :value="formatDate(user.loginTime)" 
-                readonly 
+                id="job" 
+                v-model="formData.job" 
                 class="form-control"
+                placeholder="직업을 입력하세요"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="hobbies">취미</label>
+              <input 
+                type="text" 
+                id="hobbies" 
+                v-model="formData.hobbies" 
+                class="form-control"
+                placeholder="취미를 입력하세요 (여러 개일 경우 쉼표로 구분)"
               />
             </div>
 
@@ -113,7 +169,11 @@ const user = ref(null)
 // 폼 데이터
 const formData = ref({
   name: '',
-  email: ''
+  email: '',
+  password: '',
+  confirmPassword: '',
+  job: '',
+  hobbies: ''
 })
 
 // 상태
@@ -151,7 +211,9 @@ const fetchUserProfile = async () => {
       user.value = response.user
       formData.value = {
         name: response.user.name,
-        email: response.user.email || ''
+        email: response.user.email || '',
+        job: response.user.job || '',
+        hobbies: response.user.hobbies || ''
       }
       console.log('Form data set:', formData.value) // 디버깅용
       console.log('Email value:', formData.value.email) // 이메일 값 specifically 확인
@@ -174,11 +236,25 @@ const updateProfile = async () => {
   loading.value = true
   message.value = null
   
+  console.log('updateProfile called with formData:', formData.value) // 디버깅용
+  
+  // 비밀번호 확인
+  if (formData.value.password && formData.value.password !== formData.value.confirmPassword) {
+    message.value = {
+      type: 'alert-danger',
+      text: '비밀번호가 일치하지 않습니다.'
+    }
+    loading.value = false
+    return
+  }
+  
   try {
     const response = await $fetch('/api/auth/profile', {
       method: 'PUT',
       body: formData.value
     })
+    
+    console.log('Profile update response:', response) // 응답 로깅
     
     if (response.success) {
       message.value = {
@@ -199,7 +275,7 @@ const updateProfile = async () => {
       // 2초 후 profile/index로 이동
       setTimeout(() => {
         navigateTo('/profile')
-      }, 2000)
+      }, 500)
     } else {
       throw new Error(response.message || '수정 실패')
     }
@@ -226,7 +302,7 @@ const getProviderName = (provider) => {
 // 날짜 포맷
 const formatDate = (date) => {
   if (!date) return '정보 없음'
-  return new Date(date).toLocaleString('ko-KR')
+  return new Date(date).toLocaleDateString('ko-KR')
 }
 
 // 뒤로가기

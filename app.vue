@@ -19,7 +19,7 @@
           <div class="dropdown profile-dropdown">
             <span class="dropdown-title">{{ userName }}님</span>
             <div class="dropdown-menu">
-              <NuxtLink to="/profile">회원정보 수정</NuxtLink>
+              <NuxtLink to="/profile">마이페이지</NuxtLink>
               <button @click="handleLogout" class="logout-btn">
                 로그아웃
               </button>

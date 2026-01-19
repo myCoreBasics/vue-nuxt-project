@@ -1,6 +1,12 @@
+import { getDbPool } from '../../utils/db'
+import bcrypt from 'bcrypt'
+
 export default defineEventHandler(async (event) => {
   const user = event.context.user
   const body = await readBody(event)
+
+  console.log('Profile PUT - User:', JSON.stringify(user, null, 2))
+  console.log('Profile PUT - Body:', JSON.stringify(body, null, 2))
 
   if (!user) {
     throw createError({
@@ -9,7 +15,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 필수 필드 확인
   if (!body.name) {
     throw createError({
       statusCode: 400,
@@ -17,29 +22,85 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 소셜 로그인 사용자는 이메일 수정 불가
-  if (user.provider !== 'local' && body.email && body.email !== (user.email || '')) {
-    throw createError({
-      statusCode: 400,
-      message: '소셜 로그인 사용자는 이메일을 수정할 수 없습니다.'
-    })
-  }
+  const pool = getDbPool()
+  const conn = await pool.getConnection()
+
+  console.log('DB connection established')
 
   try {
-    // TODO: 데이터베이스에 사용자 정보 업데이트
-    // 현재는 세션 정보만 업데이트
-    
+    await conn.beginTransaction()
+
+    const updateFields = []
+    const updateValues = []
+
+    updateFields.push('name = ?')
+    updateValues.push(body.name)
+
+    // 이메일이 있고 변경된 경우에만 업데이트
+    if (body.email && body.email !== user.email) {
+      updateFields.push('email = ?')
+      updateValues.push(body.email)
+      console.log('Email update detected:', body.email, 'vs', user.email)
+    }
+
+    // 비밀번호가 있는 경우에만 업데이트
+    if (body.password && body.password.trim()) {
+      const hashedPassword = await bcrypt.hash(body.password, 10)
+      updateFields.push('password = ?')
+      updateValues.push(hashedPassword)
+      console.log('Password update detected')
+    }
+
+    // 직업이 있는 경우 업데이트
+    if (body.job && body.job.trim()) {
+      updateFields.push('job = ?')
+      updateValues.push(body.job)
+      console.log('Job update detected:', body.job)
+    }
+
+    // 취미가 있는 경우 업데이트
+    if (body.hobbies && body.hobbies.trim()) {
+      updateFields.push('hobbies = ?')
+      updateValues.push(body.hobbies)
+      console.log('Hobbies update detected:', body.hobbies)
+    }
+
+    updateFields.push('updatedat = NOW()')
+    updateValues.push(user.userid)
+
+    const updateQuery = `
+      UPDATE laon_tbl_user
+      SET ${updateFields.join(', ')}
+      WHERE userid = ?
+    `
+
+    console.log('Update query:', updateQuery)
+    console.log('Update values:', updateValues)
+
+    const [result] = await conn.query(updateQuery, updateValues)
+
+    console.log('Update result:', result)
+
+    if (result.affectedRows === 0) {
+      throw new Error('DB update failed')
+    }
+
+    await conn.commit()
+    console.log('Transaction committed')
+
     // 세션 정보 업데이트
     const session = await useSession(event, {
       password: useRuntimeConfig().sessionSecret
     })
-    
+
     session.data.user = {
       ...session.data.user,
       name: body.name,
-      email: body.email || session.data.user.email,
+      email: body.email ?? session.data.user.email,
       updatedAt: new Date()
     }
+
+    console.log('Profile updated in session:', session.data.user)
 
     return {
       success: true,
@@ -47,11 +108,15 @@ export default defineEventHandler(async (event) => {
       user: session.data.user
     }
 
-  } catch (error) {
-    console.error('프로필 업데이트 실패:', error)
+  } catch (err) {
+    await conn.rollback()
+    console.error('프로필 업데이트 실패:', err)
+
     throw createError({
       statusCode: 500,
       message: '회원정보 수정에 실패했습니다.'
     })
+  } finally {
+    conn.release()
   }
 })

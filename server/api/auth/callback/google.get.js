@@ -32,9 +32,9 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    // 사용자 정보 처리
+    // 사용자 정보 구성
     const user = {
-      userid: `google_${userInfo.id}`,
+      userid: userInfo.email?.split('@')[0], // 이메일 앞부분을 아이디로 사용
       name: userInfo.name || userInfo.email?.split('@')[0] || 'Google User',
       email: userInfo.email,
       provider: 'google'
@@ -45,24 +45,37 @@ export default defineEventHandler(async (event) => {
     try {
       // 기존 사용자 확인
       const [existingUsers] = await pool.query(
-        'SELECT userid FROM laon_tbl_user WHERE userid = ?',
+        'SELECT userid, status FROM laon_tbl_user WHERE userid = ?',
         [user.userid]
       )
       
       if (existingUsers.length === 0) {
-        // 신규 사용자 저장
+        // 신규 사용자 자동 가입 (ACTIVE 상태로)
+        // 소셜 로그인 사용자를 위한 임시 비밀번호 생성
+        const tempPassword = 'social_' + Date.now() + Math.random().toString(36).substring(2)
+        
         await pool.query(
-          'INSERT INTO laon_tbl_user (userid, name, email, provider, created_at) VALUES (?, ?, ?, ?, NOW())',
-          [user.userid, user.name, user.email, user.provider]
+          'INSERT INTO laon_tbl_user (userid, name, email, password, provider, status, regdate) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+          [user.userid, user.name, user.email, tempPassword, user.provider, 'ACTIVE']
         )
-        console.log('Google 신규 사용자 저장:', user.userid)
+        console.log('Google 신규 사용자 자동 가입 완료:', user.userid)
       } else {
-        // 기존 사용자 정보 업데이트
-        await pool.query(
-          'UPDATE laon_tbl_user SET name = ?, email = ?, updated_at = NOW() WHERE userid = ?',
-          [user.name, user.email, user.userid]
-        )
-        console.log('Google 사용자 정보 업데이트:', user.userid)
+        const existingUser = existingUsers[0]
+        if (existingUser.status === 'ACTIVE') {
+          // 기존 활성 사용자: 정보 업데이트
+          await pool.query(
+            'UPDATE laon_tbl_user SET name = ?, email = ?, updateat = NOW() WHERE userid = ?',
+            [user.name, user.email, user.userid]
+          )
+          console.log('Google 기존 사용자 정보 업데이트:', user.userid)
+        } else {
+          // PENDING 상태 사용자: ACTIVE로 전환
+          await pool.query(
+            'UPDATE laon_tbl_user SET name = ?, email = ?, status = ?, updateat = NOW() WHERE userid = ?',
+            [user.name, user.email, 'ACTIVE', user.userid]
+          )
+          console.log('Google PENDING 사용자 ACTIVE로 전환:', user.userid)
+        }
       }
     } catch (dbError) {
       console.error('DB 저장 실패:', dbError)
@@ -101,7 +114,7 @@ export default defineEventHandler(async (event) => {
       path: '/'
     })
 
-    return sendRedirect(event, '/board/list')
+    return sendRedirect(event, '/')
 
   } catch (error) {
     console.error('Google OAuth error:', error)

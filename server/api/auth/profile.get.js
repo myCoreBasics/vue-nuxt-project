@@ -1,8 +1,10 @@
+import { getDbPool } from '../../utils/db'
+
 export default defineEventHandler(async (event) => {
   // 사용자 정보는 auth 미들웨어를 통해 이미 확인됨
   const user = event.context.user
 
-  console.log('Profile API - User from session:', JSON.stringify(user, null, 2)); // 세션 사용자 정보 상세 디버깅
+  console.log('Profile API - User from context:', JSON.stringify(user, null, 2))
 
   if (!user) {
     throw createError({
@@ -12,17 +14,32 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 세션에 있는 사용자 정보 반환 (DB 조회 없이)
-    const userProfile = {
-      userid: user.userid,
-      name: user.name,
-      email: user.email || null,
-      provider: user.provider || 'local',
-      loginTime: user.loginTime
+    // DB에서 최신 사용자 정보 직접 조회
+    const pool = getDbPool()
+    const [rows] = await pool.query(
+      'SELECT userid, name, email, job, hobbies, regdate FROM laon_tbl_user WHERE userid = ?',
+      [user.userid]
+    )
+
+    if (rows.length === 0) {
+      throw new Error('사용자를 찾을 수 없습니다')
     }
 
-    console.log('Profile API - Email value being returned:', userProfile.email); // 반환할 이메일 값 specifically 확인
-    console.log('Profile API - Returning user profile:', JSON.stringify(userProfile, null, 2)); // 디버깅용
+    const dbUser = rows[0]
+    console.log('Profile API - User from DB:', JSON.stringify(dbUser, null, 2))
+
+    const userProfile = {
+      userid: dbUser.userid,
+      name: dbUser.name,
+      email: dbUser.email || null,
+      job: dbUser.job || null,
+      hobbies: dbUser.hobbies || null,
+      regdate: dbUser.regdate,
+      provider: 'local' // 기본값으로 설정
+    }
+
+    console.log('Profile API - Email value being returned:', userProfile.email)
+    console.log('Profile API - Returning user profile:', JSON.stringify(userProfile, null, 2))
 
     return {
       success: true,
