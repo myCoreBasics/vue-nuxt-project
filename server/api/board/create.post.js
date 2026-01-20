@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
     // 게시물 등록 (userid, writer, category 포함)
     const [result] = await pool.query(
-      'INSERT INTO laon_tbl_board (userid, writer, title, content, category, regDate) VALUES (?, ?, ?, ?, ?, NOW())',
+      'INSERT INTO laon_tbl_board (userid, writer, title, content, category, regDate) VALUES (?, ?, ?, ?, ?, CONVERT_TZ(NOW(), "+00:00", "+09:00"))',
       [user.userid, user.name, body.title, body.content, body.category || '자유게시판']
     );
 

@@ -22,7 +22,7 @@ export async function logActivity(userid, type, category, targetId = null) {
         category, 
         target_id, 
         created_at
-      ) VALUES (?, ?, ?, ?, NOW())`,
+      ) VALUES (?, ?, ?, ?, CONVERT_TZ(NOW(), "+00:00", "+09:00"))`,
       [userid, type, category, targetId]
     )
  

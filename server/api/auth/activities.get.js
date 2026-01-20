@@ -1,7 +1,6 @@
 import { getDbPool } from '../../utils/db'
 
 export default defineEventHandler(async (event) => {
-  // 사용자 정보는 auth 미들웨어를 통해 이미 확인됨
   const user = event.context.user
 
   console.log('Activities API - User from context:', JSON.stringify(user, null, 2))
@@ -14,7 +13,6 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 쿼리 파라미터 가져오기
     const query = getQuery(event)
     const page = parseInt(query.page) || 1
     const limit = parseInt(query.limit) || 10
@@ -28,27 +26,61 @@ export default defineEventHandler(async (event) => {
 
     const pool = getDbPool()
 
-    // 기본 WHERE 조건
     let whereConditions = ['a.userid = ?']
     let queryParams = [user.userid]
 
-    // 타입 필터링
+    // 게시판 필터링
     if (type !== 'all') {
       whereConditions.push('a.activity_type = ?')
       queryParams.push(type)
     }
 
     // 검색 필터링
+    let searchConditions = []
     if (search.trim()) {
-      whereConditions.push(`(b.title LIKE ? OR b.content LIKE ? OR c.content LIKE ?)`)
-      const searchTerm = `%${search.trim()}%`
-      queryParams.push(searchTerm, searchTerm, searchTerm)
-    }
-
-    // 카테고리 필터링
-    if (category) {
-      whereConditions.push('a.category = ?')
-      queryParams.push(category)
+      if (type === 'all') {
+        // 전체 탭: 모든 타입에 대해 검색
+        if (category) {
+          // 카테고리 필터가 있을 때
+          searchConditions.push(`(
+            (a.activity_type = 'post' AND a.category = ? AND (b.title LIKE ? OR b.content LIKE ?)) OR 
+            (a.activity_type = 'comment' AND a.category = ? AND c.content LIKE ?)
+          )`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(category, searchTerm, searchTerm, category, searchTerm)
+        } else {
+          // 카테고리 필터가 없을 때
+          searchConditions.push(`(
+            (a.activity_type = 'post' AND (b.title LIKE ? OR b.content LIKE ?)) OR 
+            (a.activity_type = 'comment' AND c.content LIKE ?)
+          )`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(searchTerm, searchTerm, searchTerm)
+        }
+      } else if (type === 'post') {
+        // 게시글 탭: 게시글 제목/내용 검색
+        if (category) {
+          searchConditions.push(`a.category = ? AND (b.title LIKE ? OR b.content LIKE ?)`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(category, searchTerm, searchTerm)
+        } else {
+          searchConditions.push(`(b.title LIKE ? OR b.content LIKE ?)`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(searchTerm, searchTerm)
+        }
+      } else if (type === 'comment') {
+        // 댓글 탭: 댓글 내용 검색
+        if (category) {
+          searchConditions.push(`a.category = ? AND c.content LIKE ?`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(category, searchTerm)
+        } else {
+          searchConditions.push(`c.content LIKE ?`)
+          const searchTerm = `%${search.trim()}%`
+          queryParams.push(searchTerm)
+        }
+      }
+      // like 탭은 검색 제외 (게시글 정보 없음)
     }
 
     // 날짜 필터링
@@ -78,12 +110,22 @@ export default defineEventHandler(async (event) => {
     }
 
     const whereClause = whereConditions.join(' AND ')
+    const searchClause = searchConditions.length > 0 ? ' AND ' + searchConditions.join(' AND ') : ''
+    const finalWhereClause = whereClause + searchClause
 
-    // 전체 개수 조회
-    const [countResult] = await pool.query(
-      `SELECT COUNT(a.activity_id) as total FROM laon_tbl_activities a WHERE ${whereClause}`,
-      queryParams
-    )
+    // 전체 개수 조회 (검색 조건 포함)
+    let countQuery = `SELECT COUNT(a.activity_id) as total FROM laon_tbl_activities a`
+    let countParams = [...queryParams]
+    
+    if (searchConditions.length > 0) {
+      countQuery += ` LEFT JOIN laon_tbl_board b ON a.target_id = b.bno AND a.activity_type = 'post'
+                     LEFT JOIN laon_tbl_board c ON a.target_id = c.bno AND a.activity_type = 'comment'
+                     WHERE ${whereClause} AND ${searchConditions.join(' AND ')}`
+    } else {
+      countQuery += ` WHERE ${whereClause}`
+    }
+    
+    const [countResult] = await pool.query(countQuery, countParams)
     const total = countResult[0].total
     const totalPages = Math.ceil(total / limit)
 
@@ -109,13 +151,16 @@ export default defineEventHandler(async (event) => {
       FROM laon_tbl_activities a
       LEFT JOIN laon_tbl_board b ON a.target_id = b.bno AND a.activity_type = 'post'
       LEFT JOIN laon_tbl_board c ON a.target_id = c.bno AND a.activity_type = 'comment'
-      WHERE ${whereClause}
+      WHERE ${finalWhereClause}
       ORDER BY a.created_at DESC
       LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
     )
 
     console.log('Activities API - Found activities:', rows.length)
+    console.log('Activities API - Final WHERE clause:', finalWhereClause)
+    console.log('Activities API - Search term:', search.trim())
+    console.log('Activities API - Search conditions:', searchConditions)
 
     return {
       success: true,

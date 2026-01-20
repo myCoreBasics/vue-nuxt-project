@@ -1,6 +1,5 @@
 <template>
   <div class="container">
-    <!-- 로그인 안 했으면 경고 표시 -->
     <div v-if="!user" class="activity-container">
       <div class="activity-wrapper">
         <div class="alert alert-warning">
@@ -38,14 +37,24 @@
               </select>
               
               <div class="search-box">
-                <input 
-                  type="text" 
-                  v-model="searchQuery"
-                  @input="handleSearch"
-                  placeholder="검색어를 입력하세요..."
-                  class="search-input"
-                />
-                <button class="search-button">🔍</button>
+                <div class="search-input-wrapper">
+                  <input 
+                    type="text" 
+                    v-model="searchQuery"
+                    @keyup.enter="executeSearch"
+                    placeholder="검색어를 입력하세요."
+                    class="search-input"
+                  />
+                  <button 
+                    v-if="searchQuery.trim()"
+                    @click="clearSearch"
+                    class="search-clear-button"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <button @click="executeSearch" class="search-button">🔍</button>
               </div>
             </div>
           </div>
@@ -101,9 +110,9 @@
           </div>
  
           <!-- 페이지네이션 -->
-          <div class="pagination" v-if="totalPages > 1">
+          <div class="pagination" v-if="totalPages > 0">
             <button 
-              @click="currentPage--" 
+              @click="goToPage(currentPage - 1)" 
               :disabled="currentPage === 1"
               class="pagination-button"
             >
@@ -111,7 +120,7 @@
             </button>
             <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
             <button 
-              @click="currentPage++" 
+              @click="goToPage(currentPage + 1)" 
               :disabled="currentPage === totalPages"
               class="pagination-button"
             >
@@ -126,14 +135,17 @@
  
 <script setup>
 import { ref, onMounted, watch } from 'vue'
- 
+import { useRoute, useRouter } from 'vue-router'
+
 // 사용자 정보
 const user = ref(null)
- 
+
 // 상태
 const loading = ref(true)
 const activities = ref([])
-const activeTab = ref('all')
+const route = useRoute()
+const router = useRouter()
+const activeTab = ref(route.query.tab || 'all')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = 10
@@ -156,23 +168,47 @@ const tabs = [
 const handleTabClick = (tabValue) => {
   console.log('Tab clicked:', tabValue)
   activeTab.value = tabValue
+  
+  // URL 업데이트 (탭 상태 유지)
+  router.push({
+    path: route.path,
+    query: { tab: tabValue }
+  })
+  
+  // 페이지만 초기화 (필터는 유지)
+  currentPage.value = 1
+  
+  // 활동 내역 다시 불러오기
+  fetchActivities()
 }
- 
+
 // 페이지 접근 시 사용자 정보 확인
 onMounted(() => {
   // 쿠키에서 사용자 정보 가져오기
-  const userNameCookie = useCookie('user_name')
-  const userIdCookie = useCookie('user_id')
+  const userNameCookie = useCookie('user_name', { 
+    default: () => null 
+  })
+  const userIdCookie = useCookie('user_id', { 
+    default: () => null 
+  })
+  
+  console.log('Cookies check:', {
+    userName: userNameCookie.value,
+    userId: userIdCookie.value
+  })
  
   if (userNameCookie.value && userIdCookie.value) {
     user.value = {
       userid: userIdCookie.value,
       name: userNameCookie.value
     }
- 
+    
+    console.log('User set:', user.value)
+
     // 활동 내역 불러오기
     fetchActivities()
   } else {
+    console.log('No user cookies found')
     loading.value = false
   }
 })
@@ -199,6 +235,14 @@ const fetchActivities = async () => {
       query.dateFilter = dateFilter.value
     }
 
+    console.log('API Query params:', query)
+    console.log('Current filters:', {
+      search: searchQuery.value,
+      category: categoryFilter.value,
+      date: dateFilter.value,
+      tab: activeTab.value
+    })
+
     const response = await $fetch('/api/auth/activities', {
       method: 'GET',
       query: query
@@ -220,16 +264,25 @@ const fetchActivities = async () => {
   }
 }
 
-// 검색 처리 (디바운스)
-const handleSearch = () => {
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value)
-  }
-  
-  searchTimeout.value = setTimeout(() => {
-    currentPage.value = 1
+// 검색 실행 (버튼 클릭 또는 엔터 키)
+const executeSearch = () => {
+  currentPage.value = 1
+  fetchActivities()
+}
+
+// 검색 초기화
+const clearSearch = () => {
+  searchQuery.value = ''
+  currentPage.value = 1
+  fetchActivities()
+}
+
+// 페이지 이동 처리
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
     fetchActivities()
-  }, 300)
+  }
 }
 
 // 필터 변경 처리
@@ -335,8 +388,6 @@ const handleActivityClick = (activity) => {
 // 탭 변경 시 활동 내역 다시 불러오기
 watch(activeTab, (newTab, oldTab) => {
   console.log('Tab changed:', oldTab, '->', newTab)
-  currentPage.value = 1
-  fetchActivities()
 })
  
 // 페이지 변경 시 활동 내역 다시 불러오기
@@ -434,19 +485,49 @@ watch(currentPage, () => {
   min-width: 250px;
 }
 
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
 .search-input {
   flex: 1;
-  padding: 10px 15px;
+  padding: 10px 40px 10px 15px;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 0.9rem;
   transition: border-color 0.3s ease;
+  width: 100%;
 }
 
 .search-input:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.search-clear-button {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.search-clear-button:hover {
+  background: #f0f0f0;
+  color: #666;
 }
 
 .search-button {
