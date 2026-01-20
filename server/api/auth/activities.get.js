@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
       }
 
       if (startDate) {
-        whereConditions.push('a.created_at >= ?')
+        whereConditions.push('a.regdate >= ?')
         queryParams.push(startDate.toISOString().slice(0, 19).replace('T', ' '))
       }
     }
@@ -136,7 +136,7 @@ export default defineEventHandler(async (event) => {
         a.activity_type as type,
         a.category as category,
         a.target_id as targetId,
-        a.created_at as createdAt,
+        a.regdate as regdate,
         CASE 
           WHEN a.activity_type = 'post' THEN b.title
           WHEN a.activity_type = 'comment' THEN '댓글 작성'
@@ -152,7 +152,7 @@ export default defineEventHandler(async (event) => {
       LEFT JOIN laon_tbl_board b ON a.target_id = b.bno AND a.activity_type = 'post'
       LEFT JOIN laon_tbl_board c ON a.target_id = c.bno AND a.activity_type = 'comment'
       WHERE ${finalWhereClause}
-      ORDER BY a.created_at DESC
+      ORDER BY a.regdate DESC
       LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
     )

@@ -4,7 +4,8 @@ import { logPostActivity } from '../../utils/activityLogger';
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const user = event.context.user; // 미들웨어에서 설정한 사용자 정보
+    // 미들웨어에서 설정한 사용자 정보
+    const user = event.context.user; 
 
     // 입력값 검증
     if (!body.title || !body.content) {

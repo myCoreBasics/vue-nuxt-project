@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     
     // 게시물 조회
     const [rows] = await pool.query(
-      'SELECT bno, userid, writer, title, content, hitno, regDate FROM laon_tbl_board WHERE bno = ?',
+      'SELECT bno, userid, writer, title, content, hitno, regDate, COALESCE(like_count, 0) as like_count FROM laon_tbl_board WHERE bno = ?',
       [id]
     );
     

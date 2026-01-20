@@ -22,5 +22,9 @@ export default defineNuxtConfig({
     public: {
       apiBase: process.env.API_BASE || '/api'
     }
+  },
+  alias: {
+    '#server': './server', // 서버 코드 전용 alias
+    '#utils': './server/utils' // utils 폴더 alias
   }
 })

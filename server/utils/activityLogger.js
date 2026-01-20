@@ -21,7 +21,7 @@ export async function logActivity(userid, type, category, targetId = null) {
         activity_type, 
         category, 
         target_id, 
-        created_at
+        regdate
       ) VALUES (?, ?, ?, ?, CONVERT_TZ(NOW(), "+00:00", "+09:00"))`,
       [userid, type, category, targetId]
     )
@@ -46,10 +46,10 @@ async function createActivitiesTableIfNotExists(pool) {
         activity_type VARCHAR(20) NOT NULL,
         category VARCHAR(50) NOT NULL,
         target_id INT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        regdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_userid (userid),
         INDEX idx_activity_type (activity_type),
-        INDEX idx_created_at (created_at),
+        INDEX idx_regdate (regdate),
         INDEX idx_target_id (target_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `)
