@@ -33,6 +33,12 @@ export default defineEventHandler(async (event) => {
       [id]
     );
     
+    // 활동 내역에서도 삭제
+    await pool.query(
+      'DELETE FROM laon_tbl_activities WHERE activity_type = ? AND board_id = ? AND userid = ?',
+      ['post', id, user.userid]
+    );
+    
     return {
       success: true,
       message: '게시물이 삭제되었습니다.'

@@ -1,5 +1,5 @@
 import { getDbPool } from '#utils/db.js'
-import { logCommentActivity } from '#utils/activityLogger.js'
+import { logLikeActivity } from '#utils/activityLogger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -28,6 +28,12 @@ export default defineEventHandler(async (event) => {
         [commentId, userid]
       )
 
+      // 활동 내역에서도 삭제
+      await pool.query(
+        'DELETE FROM laon_tbl_activities WHERE activity_type = ? AND comment_id = ? AND userid = ?',
+        ['like', commentId, userid]
+      )
+
       return {
         success: true,
         liked: false,
@@ -35,10 +41,11 @@ export default defineEventHandler(async (event) => {
       }
     } else {
       // 좋아요 추가
-      await pool.query(
+      const [likeResult] = await pool.query(
         'INSERT INTO laon_tbl_likes (comment_id, userid, regdate) VALUES (?, ?, NOW())',
         [commentId, userid]
       )
+      const likeId = likeResult.insertId
 
       // 활동 기록
       const [commentInfo] = await pool.query(
@@ -47,7 +54,7 @@ export default defineEventHandler(async (event) => {
       )
 
       if (commentInfo.length > 0) {
-        await logCommentActivity(userid, 'like', commentInfo[0].board_id, commentId)
+        await logLikeActivity(userid, commentInfo[0].board_id, commentId, likeId)
       }
 
       return {

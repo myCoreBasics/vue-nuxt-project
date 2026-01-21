@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     const commentId = result.insertId
 
     // 활동 기록
-    await logCommentActivity(userid, 'comment', boardId, commentId)
+    await logCommentActivity(userid, boardId, commentId)
 
     // 작성된 댓글 정보 반환
     const [newComment] = await pool.query(`

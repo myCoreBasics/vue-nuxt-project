@@ -1,5 +1,5 @@
 import { getDbPool } from '#utils/db.js'
-import { logPostActivity } from '#utils/activityLogger.js'
+import { logLikeActivity } from '#utils/activityLogger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -29,6 +29,12 @@ export default defineEventHandler(async (event) => {
         [boardId, userid]
       )
 
+      // 활동 내역에서도 삭제
+      await pool.query(
+        'DELETE FROM laon_tbl_activities WHERE activity_type = ? AND board_id = ? AND userid = ? AND comment_id IS NULL',
+        ['like', boardId, userid]
+      )
+
       // 게시글 좋아요 수 감소
       await pool.query(
         'UPDATE laon_tbl_board SET like_count = COALESCE(like_count, 0) - 1 WHERE bno = ? AND COALESCE(like_count, 0) > 0',
@@ -42,10 +48,11 @@ export default defineEventHandler(async (event) => {
       }
     } else {
       // 좋아요 추가
-      await pool.query(
+      const [likeResult] = await pool.query(
         'INSERT INTO laon_tbl_likes (board_id, userid, regdate) VALUES (?, ?, NOW())',
         [boardId, userid]
       )
+      const likeId = likeResult.insertId
 
       // 게시글 좋아요 수 증가
       await pool.query(
@@ -54,7 +61,7 @@ export default defineEventHandler(async (event) => {
       )
 
       // 활동 기록
-      await logPostActivity(userid, 'like', boardId)
+      await logLikeActivity(userid, boardId, null, likeId)
 
       return {
         success: true,

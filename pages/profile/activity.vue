@@ -100,7 +100,7 @@
                   <h4>{{ getActivityTitle(activity) }}</h4>
                   <p>{{ getActivityDescription(activity) }}</p>
                   <div class="activity-meta">
-                    <span class="date">{{ formatDate(activity.createdAt) }}</span>
+                    <span class="date">{{ formatDate(activity.regdate) }}</span>
                     <span class="category">{{ getCategoryName(activity.category) }}</span>
                   </div>
                 </div>
@@ -303,9 +303,32 @@ const getActivityIcon = (type) => {
  
 // 활동 제목
 const getActivityTitle = (activity) => {
-  if (activity.type === 'post') return activity.title
-  if (activity.type === 'comment') return '댓글 작성'
-  if (activity.type === 'like') return '좋아요'
+  if (activity.type === 'post') return `"${activity.title}" 게시글 작성.` 
+  if (activity.type === 'comment') {
+    if (activity.parentId) {
+      // 대댓글: 댓글 내용의 일부만 표시
+      const commentContent = activity.content || '내용 없음'
+      // const truncatedContent = commentContent.length > 20 ? `${commentContent.substring(0, 20)}...` : commentContent
+      if (activity.title === '게시글이 삭제되었습니다') {
+        return `"${activity.title}" 대댓글 작성.` 
+      } else {
+        return `"${activity.title}" 게시글에 대댓글.` 
+      }
+    } else {
+      if (activity.title === '게시글이 삭제되었습니다') {
+        return '게시글이 삭제되었습니다' 
+      } else {
+        return `"${activity.title}" 게시글에 댓글.` 
+      }
+    }
+  }
+  if (activity.type === 'like') {
+    if (activity.title === '게시글이 삭제되었습니다') {
+      return '게시글이 삭제되었습니다' 
+    } else {
+      return `"${activity.title}" 게시글에 좋아요.` 
+    }
+  }
   return '활동'
 }
  
@@ -316,7 +339,7 @@ const getActivityDescription = (activity) => {
     return content.length > 50 ? `${content.substring(0, 50)}...` : content
   }
   if (activity.type === 'comment') return activity.content
-  if (activity.type === 'like') return `${activity.category} 게시글을 좋아합니다.` 
+  if (activity.type === 'like') return activity.content
   return '활동 내역'
 }
  
@@ -328,28 +351,44 @@ const getCategoryName = (category) => {
 // 날짜 포맷
 const formatDate = (date) => {
   if (!date) return '정보 없음'
-  const now = new Date()
+  
+  console.log('Original date:', date)
   const target = new Date(date)
+  console.log('Parsed date:', target)
+  console.log('Is valid date:', !isNaN(target.getTime()))
+  
+  const now = new Date()
   const diff = now - target
- 
+  console.log('Time diff (ms):', diff)
+  
+  // 유효한 날짜인지 확인
+  if (isNaN(target.getTime())) {
+    return '정보 없음'
+  }
+
+  // 1분 이내: "방금 전"
+  if (diff < 60000) {
+    return '방금 전'
+  }
+
   // 1시간 이내: "N분 전"
   if (diff < 3600000) {
     const minutes = Math.floor(diff / 60000)
     return `${minutes}분 전`
   }
- 
+
   // 24시간 이내: "N시간 전"
   if (diff < 86400000) {
     const hours = Math.floor(diff / 3600000)
     return `${hours}시간 전`
   }
- 
+
   // 7일 이내: "N일 전"
   if (diff < 604800000) {
     const days = Math.floor(diff / 86400000)
     return `${days}일 전`
   }
- 
+
   // 그 외: 날짜만 표시
   return target.toLocaleDateString('ko-KR')
 }
@@ -359,7 +398,7 @@ const handleActivityClick = (activity) => {
   // TODO: 게시글로 이동하는 로직 구현
   console.log('활동 클릭:', activity)
 
-  if (activity.type === 'post' || activity.type === 'comment') {
+  if (activity.type === 'post' || activity.type === 'comment' || activity.type === 'like') {
     // 카테고리에 따른 경로 결정
     let boardPath = '/board/free' // 기본값
     
@@ -381,7 +420,7 @@ const handleActivityClick = (activity) => {
     }
     
     // 게시글로 이동
-    navigateTo(`${boardPath}/${activity.targetId}`)
+    navigateTo(`${boardPath}/${activity.boardId}`)
   }
 }
  

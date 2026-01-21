@@ -55,6 +55,12 @@ export default defineEventHandler(async (event) => {
       [commentId]
     )
 
+    // 활동 내역에서도 삭제
+    await pool.query(
+      'DELETE FROM laon_tbl_activities WHERE activity_type = ? AND comment_id = ? AND userid = ?',
+      ['comment', commentId, userid]
+    )
+
     return {
       success: true,
       message: '댓글이 삭제되었습니다.'

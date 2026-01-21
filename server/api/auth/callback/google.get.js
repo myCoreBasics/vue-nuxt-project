@@ -62,16 +62,12 @@ export default defineEventHandler(async (event) => {
       } else {
         const existingUser = existingUsers[0]
         if (existingUser.status === 'ACTIVE') {
-          // 기존 활성 사용자: 정보 업데이트
-          await pool.query(
-            'UPDATE laon_tbl_user SET name = ?, email = ?, updateat = NOW() WHERE userid = ?',
-            [user.name, user.email, user.userid]
-          )
-          console.log('Google 기존 사용자 정보 업데이트:', user.userid)
+          // 기존 활성 사용자: 로그인만 처리 (updateat 업데이트 안 함)
+          console.log('Google 기존 사용자 로그인:', user.userid)
         } else {
           // PENDING 상태 사용자: ACTIVE로 전환
           await pool.query(
-            'UPDATE laon_tbl_user SET name = ?, email = ?, status = ?, updateat = NOW() WHERE userid = ?',
+            'UPDATE laon_tbl_user SET name = ?, email = ?, status = ?, updated_at = NOW() WHERE userid = ?',
             [user.name, user.email, 'ACTIVE', user.userid]
           )
           console.log('Google PENDING 사용자 ACTIVE로 전환:', user.userid)
